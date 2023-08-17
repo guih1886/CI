@@ -5,24 +5,55 @@ name: Go
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["*"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["*"]
 
 jobs:
+  test:
+    env:
+      HOST: localhost
+      PORT: 5432
+      USER: root
+      PASSWORD: root
+      DBNAME: root
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        go_version: ["1.17", "1.18", ">=1.18"]
+        os: ["ubuntu-latest", "ubuntu-18.04"]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{matrix.go_version}}
+
+      - name: Build DB
+        run: docker-compose --project-directory "DevOps/CI/projeto-go-testes-main" build
+
+      - name: Create DB
+        run: docker-compose --project-directory "DevOps/CI/projeto-go-testes-main" up -d
+
+      - name: Test
+        run: go test -v main_test.go
 
   build:
+    needs: test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - name: Build
+        run: go build -v DevOps/CI/projeto-go-testes-main/main.go
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.20'
+      - name: Upload main compilado
+        uses: actions/upload-artifact@v3
+        with:
+          name: Aplicação-Go
+          path: main
 
-    - name: Build
-      run: go build -v ./...
-
-    - name: Test
-      run: go test -v ./...
+  docker:
+    needs: build
+    uses: ./.github/workflows/Docker.yml
+    secrets: inherit
