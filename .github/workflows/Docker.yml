@@ -28,4 +28,4 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: leonardosartorello/testeci
+          tags: guih1886/testeci
